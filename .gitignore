@@ -27,6 +27,9 @@
 *.out
 *.app
 
+Debug
+Release
+
 # From DXUT .gitignore
 *.psess
 *.vsp
