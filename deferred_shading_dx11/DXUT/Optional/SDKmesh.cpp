@@ -11,6 +11,10 @@
 // THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A
 // PARTICULAR PURPOSE.
 //
+// Modified by Intel in 2010
+//
+// Modified by StephanieB5 to remove dependencies on DirectX SDK from the Intel code in 2017
+//
 // Copyright (c) Microsoft Corporation. All rights reserved.
 //
 // http://go.microsoft.com/fwlink/?LinkId=320437
@@ -18,6 +22,7 @@
 #include "DXUT.h"
 #include "SDKMesh.h"
 #include "SDKMisc.h"
+#include <algorithm>       // INTEL
 
 using namespace DirectX;
 
@@ -237,10 +242,7 @@ HRESULT CDXUTSDKMesh::CreateFromMemory( ID3D11Device* pDev11,
                                         size_t DataBytes,
                                         bool bCopyStatic,
                                         SDKMESH_CALLBACKS11* pLoaderCallbacks11 )
-{
-    XMFLOAT3 lower; 
-    XMFLOAT3 upper; 
-    
+{    
     m_pDev11 = pDev11;
 
     if ( DataBytes < sizeof(SDKMESH_HEADER) )
@@ -364,12 +366,19 @@ HRESULT CDXUTSDKMesh::CreateFromMemory( ID3D11Device* pDev11,
     SDKMESH_SUBSET* pSubset = nullptr;
     D3D11_PRIMITIVE_TOPOLOGY PrimType;
 
+    // INTEL: Setup bounds array
+    m_pSubsetBounds.resize(m_pMeshHeader->NumTotalSubsets);
+
+    // StephanieB5: renamed variables to clearly distinguish between mesh and subset bounds
+    XMFLOAT3 lowerMesh;
+    XMFLOAT3 upperMesh;
+
     // update bounding volume 
     SDKMESH_MESH* currentMesh = &m_pMeshArray[0];
     int tris = 0;
     for (UINT meshi=0; meshi < m_pMeshHeader->NumMeshes; ++meshi) {
-        lower.x = FLT_MAX; lower.y = FLT_MAX; lower.z = FLT_MAX;
-        upper.x = -FLT_MAX; upper.y = -FLT_MAX; upper.z = -FLT_MAX;
+        lowerMesh.x = FLT_MAX; lowerMesh.y = FLT_MAX; lowerMesh.z = FLT_MAX;
+        upperMesh.x = -FLT_MAX; upperMesh.y = -FLT_MAX; upperMesh.z = -FLT_MAX;
         currentMesh = GetMesh( meshi );
         INT indsize;
         if (m_pIndexBufferArray[currentMesh->IndexBuffer].IndexType == IT_16BIT ) {
@@ -380,6 +389,10 @@ HRESULT CDXUTSDKMesh::CreateFromMemory( ID3D11Device* pDev11,
 
         for( UINT subset = 0; subset < currentMesh->NumSubsets; subset++ )
         {
+            // INTEL: Track subset bounds as well as mesh bounds
+            XMFLOAT3 lowerSubset(FLT_MAX, FLT_MAX, FLT_MAX);
+            XMFLOAT3 upperSubset(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
             pSubset = GetSubset( meshi, subset ); //&m_pSubsetArray[ currentMesh->pSubsets[subset] ];
 
             PrimType = GetPrimitiveType11( ( SDKMESH_PRIMITIVE_TYPE )pSubset->PrimitiveType );
@@ -417,37 +430,77 @@ HRESULT CDXUTSDKMesh::CreateFromMemory( ID3D11Device* pDev11,
                 }
                 tris++;
                 XMFLOAT3 *pt = (XMFLOAT3*)&(verts[stride * current_ind]);
-                if (pt->x < lower.x) {
-                    lower.x = pt->x;
+
+                // INTEL: Propogate bounds
+                if (pt->x < lowerSubset.x) {
+                    lowerSubset.x = pt->x;
                 }
-                if (pt->y < lower.y) {
-                    lower.y = pt->y;
+                if (pt->y < lowerSubset.y) {
+                    lowerSubset.y = pt->y;
                 }
-                if (pt->z < lower.z) {
-                    lower.z = pt->z;
+                if (pt->z < lowerSubset.z) {
+                    lowerSubset.z = pt->z;
                 }
-                if (pt->x > upper.x) {
-                    upper.x = pt->x;
+                if (pt->x > upperSubset.x) {
+                    upperMesh.x = pt->x;
                 }
-                if (pt->y > upper.y) {
-                    upper.y = pt->y;
+                if (pt->y > upperSubset.y) {
+                    upperSubset.y = pt->y;
                 }
-                if (pt->z > upper.z) {
-                    upper.z = pt->z;
+                if (pt->z > upperSubset.z) {
+                    upperSubset.z = pt->z;
                 }
                 //BYTE** m_ppVertices;
                 //BYTE** m_ppIndices;
             }
             //pd3dDeviceContext->DrawIndexed( IndexCount, IndexStart, VertexStart );
+
+            // INTEL: Store subset bounds
+            // StephanieB5: removed reference to unused AABB members
+            SDKMESH_BOUNDS* subsetBounds = GetSubsetBounds(meshi, subset);
+
+            // INTEL: This isn't the tightest bounding sphere but it will work for now
+            XMVECTOR vLowerSubset = XMLoadFloat3(&lowerSubset);
+            XMVECTOR vUpperSubset = XMLoadFloat3(&upperSubset);
+            XMVECTOR vHalf = vUpperSubset - vLowerSubset;
+            vHalf *= 0.5f;
+            XMVECTOR vSphereCenter = vLowerSubset + vHalf;
+            XMStoreFloat3(&(subsetBounds->sphereCenter), vSphereCenter);
+            XMVECTOR vRadius = XMVector3Length(vHalf);
+            XMStoreFloat(&(subsetBounds->sphereRadius), vRadius);
+
+            // INTEL: Initialize this in case they never do a frustum check
+            subsetBounds->inFrustum = true;
+
+            // INTEL: Propagate to mesh bounds
+            if (lowerSubset.x < lowerMesh.x) {
+                lowerMesh.x = lowerSubset.x;
+            }
+            if (lowerSubset.y < lowerMesh.y) {
+                lowerMesh.y = lowerSubset.y;
+            }
+            if (lowerSubset.z < lowerMesh.z) {
+                lowerMesh.z = lowerSubset.z;
+            }
+            if (upperSubset.x > upperMesh.x) {
+                upperMesh.x = upperSubset.x;
+            }
+            if (upperSubset.y > upperMesh.y) {
+                upperMesh.y = upperSubset.y;
+            }
+            if (upperSubset.z > upperMesh.z) {
+                upperMesh.z = upperSubset.z;
+            }
+
         }
 
-        XMFLOAT3 half( ( upper.x - lower.x ) * 0.5f,
-                       ( upper.y - lower.y ) * 0.5f,
-                       ( upper.z - lower.z ) * 0.5f );
+        XMFLOAT3 half( ( upperMesh.x - lowerMesh.x ) * 0.5f,
+                       ( upperMesh.y - lowerMesh.y ) * 0.5f,
+                       ( upperMesh.z - lowerMesh.z ) * 0.5f );
 
-        currentMesh->BoundingBoxCenter.x = lower.x + half.x;
-        currentMesh->BoundingBoxCenter.y = lower.y + half.y;
-        currentMesh->BoundingBoxCenter.z = lower.z + half.z;
+        currentMesh->BoundingBoxCenter.x = lowerMesh.x + half.x;
+        currentMesh->BoundingBoxCenter.y = lowerMesh.y + half.y;
+        currentMesh->BoundingBoxCenter.z = lowerMesh.z + half.z;
 
         currentMesh->BoundingBoxExtents = half;
 
@@ -455,6 +508,93 @@ HRESULT CDXUTSDKMesh::CreateFromMemory( ID3D11Device* pDev11,
     // Update 
         
     return S_OK;
+}
+
+
+//--------------------------------------------------------------------------------------
+// INTEL: Clear all frustum flags to the given value
+//--------------------------------------------------------------------------------------
+void CDXUTSDKMesh::SetInFrustumFlags(bool flag)
+{
+    for (unsigned int i = 0; i < m_pMeshHeader->NumTotalSubsets; ++i) {
+        m_pSubsetBounds[i].inFrustum = flag;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------
+// INTEL: Perform frustum culling and set flags accordingly
+//--------------------------------------------------------------------------------------
+void CDXUTSDKMesh::ComputeInFrustumFlags(const DirectX::FXMMATRIX &worldViewProj,
+    bool cullNear)
+{
+    // Extract frustum planes in object space (differences of columns)    
+    XMFLOAT4 frustumPlanes[6];
+    XMFLOAT4X4 fWorldViewProj;
+    XMStoreFloat4x4(&fWorldViewProj, worldViewProj);
+    for (unsigned int p = 0; p < 2; ++p) {
+        XMFLOAT4 &neg = frustumPlanes[2 * p];
+        neg.x = fWorldViewProj._14 - fWorldViewProj.m[0][p];
+        neg.y = fWorldViewProj._24 - fWorldViewProj.m[1][p];
+        neg.z = fWorldViewProj._34 - fWorldViewProj.m[2][p];
+        neg.w = fWorldViewProj._44 - fWorldViewProj.m[3][p];
+
+        XMFLOAT4 &pos = frustumPlanes[2 * p + 1];
+        pos.x = fWorldViewProj._14 + fWorldViewProj.m[0][p];
+        pos.y = fWorldViewProj._24 + fWorldViewProj.m[1][p];
+        pos.z = fWorldViewProj._34 + fWorldViewProj.m[2][p];
+        pos.w = fWorldViewProj._44 + fWorldViewProj.m[3][p];
+    }
+
+    {
+        // Far
+        XMFLOAT4 &f = frustumPlanes[4];
+        f.x = fWorldViewProj._14 - fWorldViewProj._13;
+        f.y = fWorldViewProj._24 - fWorldViewProj._23;
+        f.z = fWorldViewProj._34 - fWorldViewProj._33;
+        f.w = fWorldViewProj._44 - fWorldViewProj._43;
+
+        // Near is special in D3D due to [0, 1] Z clip range
+        XMFLOAT4 &n = frustumPlanes[5];
+        n.x = fWorldViewProj._13;
+        n.y = fWorldViewProj._23;
+        n.z = fWorldViewProj._33;
+        n.w = fWorldViewProj._43;
+    }
+
+    // Normalize
+    for (unsigned int p = 0; p < 6; ++p) {
+        XMVECTOR vPlane = XMLoadFloat4(&frustumPlanes[p]);
+        vPlane = XMPlaneNormalize(vPlane);
+        XMStoreFloat4(&frustumPlanes[p], vPlane);
+    }
+
+    // If they didn't ask for culling against near, skip it
+    unsigned int cullPlanes = cullNear ? 6 : 5;
+
+    for (unsigned int i = 0; i < m_pMeshHeader->NumTotalSubsets; ++i) {
+        XMVECTOR vCenter = XMLoadFloat3(&(m_pSubsetBounds[i].sphereCenter));
+        float radius = m_pSubsetBounds[i].sphereRadius;
+
+        bool inFrustum = true;
+        for (unsigned int p = 0; p < cullPlanes; ++p) {
+            XMVECTOR vPlane = XMLoadFloat4(&frustumPlanes[p]);
+            XMVECTOR vD = XMPlaneDotCoord(vPlane, vCenter);
+            float d; 
+            XMStoreFloat(&d, vD);
+            if (d + radius < 0.0f) {
+                // Outside frustum!
+                inFrustum = false;
+                break;
+            }
+        }
+
+        // AABB test doesn't make enough difference to justify the cost
+        // and complexity in our scenes.
+        // StephanieB5: removed commented out AABB code
+
+        m_pSubsetBounds[i].inFrustum = inFrustum;
+    }
 }
 
 
@@ -626,6 +766,12 @@ void CDXUTSDKMesh::RenderMesh( UINT iMesh,
     for( UINT subset = 0; subset < pMesh->NumSubsets; subset++ )
     {
         pSubset = &m_pSubsetArray[ pMesh->pSubsets[subset] ];
+
+        // INTEL: Skip this subset if it was marked out of the frustum
+        UINT subsetArrayIndex = pMesh->pSubsets[subset];
+        if (!m_pSubsetBounds[subsetArrayIndex].inFrustum) {
+            continue;
+        }
 
         PrimType = GetPrimitiveType11( ( SDKMESH_PRIMITIVE_TYPE )pSubset->PrimitiveType );
         if( bAdjacent )
@@ -1109,6 +1255,13 @@ UINT CDXUTSDKMesh::GetNumSubsets( _In_ UINT iMesh ) const
 SDKMESH_SUBSET* CDXUTSDKMesh::GetSubset( _In_ UINT iMesh, _In_ UINT iSubset ) const
 {
     return &m_pSubsetArray[ m_pMeshArray[ iMesh ].pSubsets[iSubset] ];
+}
+
+//--------------------------------------------------------------------------------------
+// INTEL
+SDKMESH_BOUNDS* CDXUTSDKMesh::GetSubsetBounds(UINT iMesh, UINT iSubset)
+{
+    return &m_pSubsetBounds[m_pMeshArray[iMesh].pSubsets[iSubset]];
 }
 
 //--------------------------------------------------------------------------------------
