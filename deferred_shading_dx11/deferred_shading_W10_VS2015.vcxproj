@@ -118,7 +118,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/IGNORE:4089 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>d3dcompiler.lib;d3dx11d.lib;d3dx9d.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3dcompiler.lib;d3d11.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;usp10.lib;imm32.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -151,7 +151,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/IGNORE:4089 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>d3dcompiler.lib;d3dx11d.lib;d3dx9d.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3dcompiler.lib;d3d11.lib;dxguid.lib;winmm.lib;comctl32.lib;usp10.lib;imm32.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -185,7 +185,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/IGNORE:4089 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>d3dcompiler.lib;d3dx11.lib;d3dx9.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3dcompiler.lib;d3d11.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;usp10.lib;imm32.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -222,7 +222,7 @@
     </ClCompile>
     <Link>
       <AdditionalOptions>/IGNORE:4089 %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>d3dcompiler.lib;d3dx11.lib;d3dx9.lib;dxerr.lib;dxguid.lib;winmm.lib;comctl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3dcompiler.lib;d3d11.lib;dxguid.lib;winmm.lib;comctl32.lib;usp10.lib;imm32.lib;version.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <DelayLoadDLLs>%(DelayLoadDLLs)</DelayLoadDLLs>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -251,13 +251,19 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ColorUtil.cpp" />
+    <ClCompile Include="DXUT\Core\DDSTextureLoader.cpp" />
+    <ClCompile Include="DXUT\Core\dxerr.cpp" />
     <ClCompile Include="DXUT\Core\DXUT.cpp" />
+    <ClCompile Include="DXUT\Core\ScreenGrab.cpp" />
+    <ClCompile Include="DXUT\Core\WICTextureLoader.cpp" />
     <ClCompile Include="DXUT\Optional\DXUTcamera.cpp" />
     <ClCompile Include="DXUT\Core\DXUTDevice11.cpp" />
     <ClCompile Include="DXUT\Optional\DXUTgui.cpp" />
     <ClCompile Include="DXUT\Core\DXUTmisc.cpp" />
+    <ClCompile Include="DXUT\Optional\DXUTguiIME.cpp" />
     <ClCompile Include="DXUT\Optional\DXUTres.cpp" />
     <ClCompile Include="DXUT\Optional\DXUTsettingsdlg.cpp" />
+    <ClCompile Include="DXUT\Optional\ImeUi.cpp" />
     <ClCompile Include="DXUT\Optional\SDKmesh.cpp" />
     <ClCompile Include="DXUT\Optional\SDKmisc.cpp" />
     <ClCompile Include="App.cpp" />
@@ -267,13 +273,20 @@
   <ItemGroup>
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="ColorUtil.h" />
+    <ClInclude Include="DXUT\Core\DDSTextureLoader.h" />
+    <ClInclude Include="DXUT\Core\dxerr.h" />
     <ClInclude Include="DXUT\Core\DXUT.h" />
+    <ClInclude Include="DXUT\Core\ScreenGrab.h" />
+    <ClInclude Include="DXUT\Core\WICTextureLoader.h" />
     <ClInclude Include="DXUT\Optional\DXUTcamera.h" />
     <ClInclude Include="DXUT\Core\DXUTDevice11.h" />
     <ClInclude Include="DXUT\Optional\DXUTgui.h" />
     <ClInclude Include="DXUT\Core\DXUTmisc.h" />
+    <ClInclude Include="DXUT\Optional\DXUTguiIME.h" />
+    <ClInclude Include="DXUT\Optional\DXUTLockFreePipe.h" />
     <ClInclude Include="DXUT\Optional\DXUTres.h" />
     <ClInclude Include="DXUT\Optional\DXUTsettingsdlg.h" />
+    <ClInclude Include="DXUT\Optional\ImeUi.h" />
     <ClInclude Include="DXUT\Optional\SDKmesh.h" />
     <ClInclude Include="DXUT\Optional\SDKmisc.h" />
     <ClInclude Include="App.h" />
