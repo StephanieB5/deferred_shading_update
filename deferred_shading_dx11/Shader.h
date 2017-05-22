@@ -11,11 +11,13 @@
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  Intel does not
 // assume any responsibility for any errors which may appear in this software nor any
 // responsibility to update it.
+//
+// Modified by StephanieB5 to remove dependencies on DirectX SDK in 2017
+//
 
 #pragma once
 
 #include <d3d11.h>
-#include <d3dx11.h>
 #include <assert.h>
 
 // Templated shader factory utilities
@@ -97,7 +99,7 @@ public:
 
         ID3D10Blob *bytecode = 0;
         ID3D10Blob *errors = 0;
-        HRESULT hr = D3DX11CompileFromFile(srcFile, defines, 0, functionName, profile, shaderFlags, 0, 0, &bytecode, &errors, 0);
+        HRESULT hr = D3DCompileFromFile(srcFile, defines, D3D_COMPILE_STANDARD_FILE_INCLUDE, functionName, profile, shaderFlags, 0, &bytecode, &errors);
         
         if (errors) {
             OutputDebugStringA(static_cast<const char *>(errors->GetBufferPointer()));

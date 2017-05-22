@@ -11,11 +11,14 @@
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  Intel does not
 // assume any responsibility for any errors which may appear in this software nor any
 // responsibility to update it.
+//
+// Modified by StephanieB5 to remove dependencies on DirectX SDK in 2017
+//
 
 #pragma once
 
-#include <d3dx10.h>
+#include <DirectXMath.h>
 
 // Simple function for getting bright colors...
 // Hue in [0, 1)
-D3DXVECTOR3 HueToRGB(float hue);
+DirectX::XMVECTOR HueToRGB(float hue);

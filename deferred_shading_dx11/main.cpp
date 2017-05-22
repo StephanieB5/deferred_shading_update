@@ -11,17 +11,22 @@
 // WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.  Intel does not
 // assume any responsibility for any errors which may appear in this software nor any
 // responsibility to update it.
+//
+// Modified by StephanieB5 to remove dependencies on DirectX SDK in 2017
+//
 
 #include "DXUT.h"
 #include "DXUTcamera.h"
 #include "DXUTgui.h"
 #include "DXUTsettingsDlg.h"
+#include "DDSTextureLoader.h"
 #include "SDKmisc.h"
 #include "SDKMesh.h"
 #include "App.h"
 #include "ShaderDefines.h"
 #include <sstream>
 
+using namespace DirectX;
 
 // Constants
 static const float kLightRotationSpeed = 0.05f;
@@ -67,7 +72,7 @@ CFirstPersonCamera gViewerCamera;
 
 CDXUTSDKMesh gMeshOpaque;
 CDXUTSDKMesh gMeshAlpha;
-D3DXMATRIXA16 gWorldMatrix;
+XMMATRIX gWorldMatrix;
 ID3D11ShaderResourceView* gSkyboxSRV = 0;
 
 // DXUT GUI stuff
@@ -115,7 +120,7 @@ void InitUI();
 void UpdateUIState();
 
 
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, INT nCmdShow)
+int WINAPI wWinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, INT /*nCmdShow*/)
 {
     // Enable run-time memory check for debug builds.
 #if defined(DEBUG) | defined(_DEBUG)
@@ -272,9 +277,10 @@ void DestroyApp()
 
 void LoadSkybox(ID3D11Device* d3dDevice, LPCWSTR fileName)
 {
-    ID3D11Resource* resource = 0;
+    ID3D11Resource* resource = nullptr;
     HRESULT hr;
-    hr = D3DX11CreateTextureFromFile(d3dDevice, fileName, 0, 0, &resource, 0);
+    // StephanieB5: All the texture files provide with sample files are DDS files
+    hr = CreateDDSTextureFromFile(d3dDevice, fileName, &resource, nullptr, 0, nullptr);
     assert(SUCCEEDED(hr));
 
     d3dDevice->CreateShaderResourceView(resource, 0, &gSkyboxSRV);
@@ -285,10 +291,10 @@ void InitScene(ID3D11Device* d3dDevice)
 {
     DestroyScene();
 
-    D3DXVECTOR3 cameraEye(0.0f, 0.0f, 0.0f);
-    D3DXVECTOR3 cameraAt(0.0f, 0.0f, 0.0f);
+    XMVECTOR cameraEye = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+    XMVECTOR cameraAt = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
     float sceneScaling = 1.0f;
-    D3DXVECTOR3 sceneTranslation(0.0f, 0.0f, 0.0f);
+    XMVECTOR sceneTranslation = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
     bool zAxisUp = false;
 
     SCENE_SELECTION scene = static_cast<SCENE_SELECTION>(PtrToUlong(gSceneSelectCombo->GetSelectedData()));
@@ -296,33 +302,32 @@ void InitScene(ID3D11Device* d3dDevice)
         case POWER_PLANT_SCENE: {
             gMeshOpaque.Create(d3dDevice, L"..\\media\\powerplant\\powerplant.sdkmesh");
             LoadSkybox(d3dDevice, L"..\\media\\Skybox\\Clouds.dds");
+            cameraEye = XMVectorSet(100.0f, 5.0f, 5.0f, 0.0f);
             sceneScaling = 1.0f;
-            cameraEye = sceneScaling * D3DXVECTOR3(100.0f, 5.0f, 5.0f);
-            cameraAt = sceneScaling * D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+            // sceneScaling == 1.0f so no need to rescale cameraEye nor cameraAt
         } break;
 
         case SPONZA_SCENE: {
             gMeshOpaque.Create(d3dDevice, L"..\\media\\Sponza\\sponza_dds.sdkmesh");
             LoadSkybox(d3dDevice, L"..\\media\\Skybox\\Clouds.dds");
+            cameraEye = XMVectorSet(1200.0f, 200.0f, 100.0f, 0.0f);
             sceneScaling = 0.05f;
-            cameraEye = sceneScaling * D3DXVECTOR3(1200.0f, 200.0f, 100.0f);
-            cameraAt = sceneScaling * D3DXVECTOR3(0.0f, 0.0f, 0.0f);
+            cameraEye *= sceneScaling;
+            // cameraAt is a zero vector and is unaffected by scaling
         } break;
     };
     
-    D3DXMatrixScaling(&gWorldMatrix, sceneScaling, sceneScaling, sceneScaling);
+    gWorldMatrix = XMMatrixScaling(sceneScaling, sceneScaling, sceneScaling);
     if (zAxisUp) {
-        D3DXMATRIXA16 m;
-        D3DXMatrixRotationX(&m, -D3DX_PI / 2.0f);
+        XMMATRIX m = XMMatrixRotationX(-XM_PI / 2.0f);
         gWorldMatrix *= m;
     }
     {
-        D3DXMATRIXA16 t;
-        D3DXMatrixTranslation(&t, sceneTranslation.x, sceneTranslation.y, sceneTranslation.z);
+        XMMATRIX t = XMMatrixTranslationFromVector(sceneTranslation);
         gWorldMatrix *= t;
     }
 
-    gViewerCamera.SetViewParams(&cameraEye, &cameraAt);
+    gViewerCamera.SetViewParams(cameraEye, cameraAt);
     gViewerCamera.SetScalers(0.01f, 10.0f);
     gViewerCamera.FrameMove(0.0f);
     
@@ -339,14 +344,14 @@ void DestroyScene()
 }
 
 
-bool CALLBACK ModifyDeviceSettings(DXUTDeviceSettings* deviceSettings, void* userContext)
+bool CALLBACK ModifyDeviceSettings(DXUTDeviceSettings* deviceSettings, void* /*userContext*/)
 {
     // For the first device created if its a REF device, optionally display a warning dialog box
     static bool firstTime = true;
     if (firstTime) {
         firstTime = false;
         if (deviceSettings->d3d11.DriverType == D3D_DRIVER_TYPE_REFERENCE) {
-            DXUTDisplaySwitchingToREFWarning(deviceSettings->ver);
+            DXUTDisplaySwitchingToREFWarning();
         }
     }
 
@@ -362,7 +367,7 @@ bool CALLBACK ModifyDeviceSettings(DXUTDeviceSettings* deviceSettings, void* use
 }
 
 
-void CALLBACK OnFrameMove(double time, float elapsedTime, void* userContext)
+void CALLBACK OnFrameMove(double /*time*/, float elapsedTime, void* /*userContext*/)
 {
     if (gZeroNextFrameTime) {
         elapsedTime = 0.0f;
@@ -379,7 +384,7 @@ void CALLBACK OnFrameMove(double time, float elapsedTime, void* userContext)
 
 
 LRESULT CALLBACK MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, bool* noFurtherProcessing,
-                          void* userContext)
+                          void* /*userContext*/)
 {
     // Pass messages to dialog resource manager calls so GUI state is updated correctly
     *noFurtherProcessing = gDialogResourceManager.MsgProc(hWnd, uMsg, wParam, lParam );
@@ -408,7 +413,7 @@ LRESULT CALLBACK MsgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, boo
 }
 
 
-void CALLBACK OnKeyboard(UINT character, bool keyDown, bool altDown, void* userContext)
+void CALLBACK OnKeyboard(UINT character, bool keyDown, bool /*altDown*/, void* /*userContext*/)
 {
     if(keyDown) {
         switch (character) {
@@ -425,7 +430,7 @@ void CALLBACK OnKeyboard(UINT character, bool keyDown, bool altDown, void* userC
 }
 
 
-void CALLBACK OnGUIEvent(UINT eventID, INT controlID, CDXUTControl* control, void* userContext)
+void CALLBACK OnGUIEvent(UINT /*eventID*/, INT controlID, CDXUTControl* control, void* /*userContext*/)
 {
     switch (controlID) {
         case UI_TOGGLEFULLSCREEN:
@@ -463,7 +468,7 @@ void CALLBACK OnGUIEvent(UINT eventID, INT controlID, CDXUTControl* control, voi
 }
 
 
-void CALLBACK OnD3D11DestroyDevice(void* userContext)
+void CALLBACK OnD3D11DestroyDevice(void* /*userContext*/)
 {
     DestroyApp();
     DestroyScene();
@@ -475,8 +480,8 @@ void CALLBACK OnD3D11DestroyDevice(void* userContext)
 }
 
 
-HRESULT CALLBACK OnD3D11CreateDevice(ID3D11Device* d3dDevice, const DXGI_SURFACE_DESC* backBufferSurfaceDesc,
-                                     void* userContext)
+HRESULT CALLBACK OnD3D11CreateDevice(ID3D11Device* d3dDevice, const DXGI_SURFACE_DESC* /*backBufferSurfaceDesc*/,
+                                     void* /*userContext*/)
 {    
     ID3D11DeviceContext* d3dDeviceContext = DXUTGetD3D11DeviceContext();
     gDialogResourceManager.OnD3D11CreateDevice(d3dDevice, d3dDeviceContext);
@@ -491,8 +496,8 @@ HRESULT CALLBACK OnD3D11CreateDevice(ID3D11Device* d3dDevice, const DXGI_SURFACE
 }
 
 
-HRESULT CALLBACK OnD3D11ResizedSwapChain(ID3D11Device* d3dDevice, IDXGISwapChain* swapChain,
-                                          const DXGI_SURFACE_DESC* backBufferSurfaceDesc, void* userContext)
+HRESULT CALLBACK OnD3D11ResizedSwapChain(ID3D11Device* d3dDevice, IDXGISwapChain* /*swapChain*/,
+                                          const DXGI_SURFACE_DESC* backBufferSurfaceDesc, void* /*userContext*/)
 {
     HRESULT hr;
 
@@ -502,7 +507,7 @@ HRESULT CALLBACK OnD3D11ResizedSwapChain(ID3D11Device* d3dDevice, IDXGISwapChain
     gAspectRatio = backBufferSurfaceDesc->Width / (float)backBufferSurfaceDesc->Height;
 
     // NOTE: Complementary Z (1-z) buffer used here, so swap near/far!
-    gViewerCamera.SetProjParams(D3DX_PI / 4.0f, gAspectRatio, 300.0f, 0.05f);
+    gViewerCamera.SetProjParams(XM_PI / 4.0f, gAspectRatio, 300.0f, 0.05f);
 
     // Standard HUDs
     const int border = 20;
@@ -524,14 +529,14 @@ HRESULT CALLBACK OnD3D11ResizedSwapChain(ID3D11Device* d3dDevice, IDXGISwapChain
 }
 
 
-void CALLBACK OnD3D11ReleasingSwapChain(void* userContext)
+void CALLBACK OnD3D11ReleasingSwapChain(void* /*userContext*/)
 {
     gDialogResourceManager.OnD3D11ReleasingSwapChain();
 }
 
 
-void CALLBACK OnD3D11FrameRender(ID3D11Device* d3dDevice, ID3D11DeviceContext* d3dDeviceContext, double time,
-                                 float elapsedTime, void* userContext)
+void CALLBACK OnD3D11FrameRender(ID3D11Device* d3dDevice, ID3D11DeviceContext* d3dDeviceContext, double /*time*/,
+                                 float elapsedTime, void* /*userContext*/)
 {
     if (gZeroNextFrameTime) {
         elapsedTime = 0.0f;
@@ -579,7 +584,7 @@ void CALLBACK OnD3D11FrameRender(ID3D11Device* d3dDevice, ID3D11DeviceContext* d
         gTextHelper->Begin();
 
         gTextHelper->SetInsertionPos(2, 0);
-        gTextHelper->SetForegroundColor(D3DXCOLOR(1.0f, 1.0f, 0.0f, 1.0f));
+        gTextHelper->SetForegroundColor(XMVectorSet(1.0f, 1.0f, 0.0f, 1.0f));
         gTextHelper->DrawTextLine(DXUTGetFrameStats(DXUTIsVsyncEnabled()));
         //gTextHelper->DrawTextLine(DXUTGetDeviceStats());
 
