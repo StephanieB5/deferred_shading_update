@@ -14,7 +14,7 @@
 
 Date
 ====
-May 2010 - Updating the code to not rely on the DXSDK.
+May 2017 - StephanieB5 Updating the code to not rely on the DXSDK.
 
 Date
 ====
@@ -34,7 +34,7 @@ User Interaction
   around the scene.
 
 
-Requirements
+Requirements for the Windows 10 Visual Studio 2015 update
 ============
 
 For compilation:
@@ -45,10 +45,12 @@ For execution:
 
 1) Windows 10
 2) DirectX 11 compatible video card
-3) Appropriate Visual C++ Redistributable Package (2010+)
+3) Appropriate Visual C++ Redistributable Package (2015)
+4) For running outside of the debugger: copy the executable, deferred_shading_W10_VS2015.exe, into the deferred_shading_dx11 folder
 
 
-Known Issues
+
+Known Issues (dated from 2010)
 ============
    
 1) Output is corrupted on NVIDIA DX11 cards when using the "Quad" deferred
