@@ -39,14 +39,13 @@ Requirements
 
 For compilation:
 
-1) Visual C++ 2010
-2) DirectX SDK (June 2010 or newer)
+1) Visual C++ 2010 (or later)
 
 For execution:
 
-1) Windows Vista or Windows 7
+1) Windows 10
 2) DirectX 11 compatible video card
-3) Appropriate Visual C++ Redistributable Package (2010)
+3) Appropriate Visual C++ Redistributable Package (2010+)
 
 
 Known Issues
