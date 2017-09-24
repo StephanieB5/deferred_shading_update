@@ -39,7 +39,7 @@ Requirements for the Windows 10 Visual Studio 2015 update
 
 For compilation:
 
-1) Visual C++ 2015
+1) Visual C++ 2010 (or later)
 
 For execution:
 
@@ -47,6 +47,7 @@ For execution:
 2) DirectX 11 compatible video card
 3) Appropriate Visual C++ Redistributable Package (2015)
 4) For running outside of the debugger: copy the executable, deferred_shading_W10_VS2015.exe, into the deferred_shading_dx11 folder
+
 
 
 Known Issues (dated from 2010)
